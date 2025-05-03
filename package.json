@@ -2,10 +2,13 @@
   "name": "youtube-downloader",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "dev": "next dev -p 5001",
     "build": "next build",
-    "start": "next start -p 5001",
+    "start": "next start -p $PORT",
     "lint": "next lint",
     "postinstall": "node scripts/check-yt-dlp.js"
   },
