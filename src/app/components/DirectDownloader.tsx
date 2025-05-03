@@ -24,19 +24,25 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
       // For debugging - let's log the download URL
       console.log(`Downloading from: ${downloadUrl}`);
       
-      // Open the download URL in a new tab/window
-      window.open(downloadUrl, '_blank');
+      // Create a hidden form and submit it to trigger download
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = downloadUrl;
+      form.target = '_blank';
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
       
       // Show complete status after a brief delay
       setTimeout(() => {
         setStatus('complete');
       }, 2000);
       
-      // Set up a fallback timer to detect if no download starts
+      // Set up a fallback timer for error message
       setTimeout(() => {
         if (status === 'loading') {
           setStatus('error');
-          setError('Download did not start. Please check if popups are blocked in your browser settings.');
+          setError('Download may not have started. Your browser may not support automatic downloads or the video may be unavailable.');
         }
       }, 20000); // 20 second timeout
       
@@ -74,7 +80,7 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
         
         {status === 'complete' && (
           <div className="p-4 mb-6 bg-green-50 text-green-700 rounded-lg">
-            <p>A new tab should have opened with your download. If nothing happens, please check if popup blockers are enabled in your browser.</p>
+            <p>Your download should begin shortly. If nothing happens, try clicking the download button again.</p>
           </div>
         )}
         
@@ -105,7 +111,7 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
         <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
           <h3 className="font-semibold text-yellow-800">How It Works:</h3>
           <p className="text-yellow-700 mt-1">
-            Our service finds the direct download link from YouTube and redirects your browser to download directly from YouTube's servers for maximum speed and reliability.
+            Our server streams YouTube video content directly to your browser. The video is processed on our server and delivered to you as a downloadable file.
           </p>
           <p className="text-yellow-700 mt-2 text-sm">
             <strong>Note:</strong> Only download content you have the right to access.

@@ -34,42 +34,31 @@ export async function GET(request: NextRequest) {
       const videoTitle = info.videoDetails.title.replace(/[^\w\s]/gi, '');
       const sanitizedTitle = videoTitle.replace(/\s+/g, '_');
       
-      // Find the best format based on user request
-      let formatInfo;
+      // Set content type and headers
+      const headers = new Headers();
       
       if (format === 'mp3') {
-        // For MP3, get the best audio-only format
-        formatInfo = ytdl.chooseFormat(info.formats, { 
-          quality: 'highestaudio',
-          filter: 'audioonly' 
-        });
+        headers.set('Content-Type', 'audio/mpeg');
       } else {
-        // For MP4, get the best video format with audio
-        formatInfo = ytdl.chooseFormat(info.formats, {
-          quality: 'highest',
-          filter: 'audioandvideo'
-        });
+        headers.set('Content-Type', 'video/mp4');
       }
       
-      if (!formatInfo || !formatInfo.url) {
-        throw new Error('Could not find suitable format for download');
-      }
+      headers.set('Content-Disposition', `attachment; filename="${sanitizedTitle}.${format}"`);
       
-      // Log what format we found (for debugging)
-      console.log(`Selected format: ${JSON.stringify({
-        itag: formatInfo.itag,
-        mimeType: formatInfo.mimeType,
-        quality: formatInfo.quality,
-        hasAudio: formatInfo.hasAudio,
-        hasVideo: formatInfo.hasVideo
-      })}`);
+      // Stream options
+      const options: ytdl.downloadOptions = {
+        quality: format === 'mp3' ? 'highestaudio' : 'highest',
+        filter: format === 'mp3' ? 'audioonly' : 'audioandvideo',
+      };
       
-      // Create filename based on format
-      const filename = `${sanitizedTitle}.${format}`;
+      // Create a ReadableStream from ytdl
+      const stream = ytdl(url, options);
       
-      // DIRECT APPROACH: Redirect to the source URL
-      // This is the most reliable approach on serverless environments like Vercel
-      return NextResponse.redirect(formatInfo.url);
+      // Return the stream in the response
+      return new Response(stream as any, {
+        headers,
+        status: 200,
+      });
       
     } catch (streamError) {
       console.error('Stream setup error:', streamError);
