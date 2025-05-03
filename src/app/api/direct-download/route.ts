@@ -67,34 +67,9 @@ export async function GET(request: NextRequest) {
       // Create filename based on format
       const filename = `${sanitizedTitle}.${format}`;
       
-      // Create headers for the response
-      const headers = new Headers();
-      headers.set('Content-Disposition', `attachment; filename="${filename}"`);
-      
-      if (format === 'mp3') {
-        headers.set('Content-Type', 'audio/mpeg');
-      } else {
-        headers.set('Content-Type', 'video/mp4');
-      }
-      
-      // Instead of streaming through our server, redirect to the direct video URL
-      // This approach avoids processing through our server and is more compatible with Vercel
-      
-      // Option 1: Redirect to the direct URL
-      // return NextResponse.redirect(formatInfo.url);
-      
-      // Option 2: Proxy the response (better for preserving file name and headers)
-      const response = await fetch(formatInfo.url);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch video: ${response.status} ${response.statusText}`);
-      }
-      
-      // Return the proxied response with our custom headers
-      return new Response(response.body, {
-        headers,
-        status: 200
-      });
+      // DIRECT APPROACH: Redirect to the source URL
+      // This is the most reliable approach on serverless environments like Vercel
+      return NextResponse.redirect(formatInfo.url);
       
     } catch (streamError) {
       console.error('Stream setup error:', streamError);

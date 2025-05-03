@@ -24,25 +24,19 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
       // For debugging - let's log the download URL
       console.log(`Downloading from: ${downloadUrl}`);
       
-      // Create an invisible iframe for the download
-      const downloadFrame = document.createElement('iframe');
-      downloadFrame.style.display = 'none';
-      downloadFrame.src = downloadUrl;
-      document.body.appendChild(downloadFrame);
+      // Open the download URL in a new tab/window
+      window.open(downloadUrl, '_blank');
       
-      // Set a timeout to remove the iframe after the download has started
+      // Show complete status after a brief delay
       setTimeout(() => {
-        if (downloadFrame.parentNode) {
-          document.body.removeChild(downloadFrame);
-        }
         setStatus('complete');
-      }, 5000); // Show loading for 5 seconds for better user experience
+      }, 2000);
       
       // Set up a fallback timer to detect if no download starts
       setTimeout(() => {
         if (status === 'loading') {
           setStatus('error');
-          setError('Download did not start. Please try again or try a different video.');
+          setError('Download did not start. Please check if popups are blocked in your browser settings.');
         }
       }, 20000); // 20 second timeout
       
@@ -80,7 +74,7 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
         
         {status === 'complete' && (
           <div className="p-4 mb-6 bg-green-50 text-green-700 rounded-lg">
-            <p>Download started! If your download doesn't begin automatically, try again or check your browser's download settings.</p>
+            <p>A new tab should have opened with your download. If nothing happens, please check if popup blockers are enabled in your browser.</p>
           </div>
         )}
         
@@ -111,8 +105,7 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
         <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
           <h3 className="font-semibold text-yellow-800">How It Works:</h3>
           <p className="text-yellow-700 mt-1">
-            Our server downloads the YouTube video directly, processes it, and delivers it to your device.
-            No third-party services are used - everything happens securely on our servers.
+            Our service finds the direct download link from YouTube and redirects your browser to download directly from YouTube's servers for maximum speed and reliability.
           </p>
           <p className="text-yellow-700 mt-2 text-sm">
             <strong>Note:</strong> Only download content you have the right to access.
