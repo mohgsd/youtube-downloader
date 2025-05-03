@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 5001",
     "build": "next build",
-    "start": "next start -p 5001",
+    "start": "next start -p ${PORT:-5001}",
     "lint": "next lint",
     "postinstall": "node scripts/check-yt-dlp.js"
   },
