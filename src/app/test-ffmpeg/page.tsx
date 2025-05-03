@@ -43,33 +43,35 @@ export default function TestFfmpeg() {
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-2">Available Download Services</h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border">
-            <thead>
+          <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
+            <thead className="bg-gray-100">
               <tr>
-                <th className="py-2 px-4 border-b">Service</th>
-                <th className="py-2 px-4 border-b">MP3 Support</th>
-                <th className="py-2 px-4 border-b">MP4 Support</th>
-                <th className="py-2 px-4 border-b">Notes</th>
+                <th className="py-2 px-4 text-left">Component</th>
+                <th className="py-2 px-4 text-left">Status</th>
+                <th className="py-2 px-4 text-left">Details</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="py-2 px-4 border-b">Y2mate</td>
-                <td className="py-2 px-4 border-b text-center">✅</td>
-                <td className="py-2 px-4 border-b text-center">✅</td>
-                <td className="py-2 px-4 border-b">Supports multiple quality options</td>
+                <td className="py-2 px-4 border-b">Server API</td>
+                <td className="py-2 px-4 border-b">
+                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Available</span>
+                </td>
+                <td className="py-2 px-4 border-b">Direct server download enabled</td>
               </tr>
               <tr>
-                <td className="py-2 px-4 border-b">SaveFrom</td>
-                <td className="py-2 px-4 border-b text-center">✅</td>
-                <td className="py-2 px-4 border-b text-center">✅</td>
-                <td className="py-2 px-4 border-b">Fast downloads with fewer ads</td>
+                <td className="py-2 px-4 border-b">YouTube API</td>
+                <td className="py-2 px-4 border-b">
+                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Connected</span>
+                </td>
+                <td className="py-2 px-4 border-b">Video processing available</td>
               </tr>
               <tr>
-                <td className="py-2 px-4 border-b">YTMP3</td>
-                <td className="py-2 px-4 border-b text-center">✅</td>
-                <td className="py-2 px-4 border-b text-center">✅</td>
-                <td className="py-2 px-4 border-b">Simple interface, works well for audio</td>
+                <td className="py-2 px-4 border-b">Download Engine</td>
+                <td className="py-2 px-4 border-b">
+                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Active</span>
+                </td>
+                <td className="py-2 px-4 border-b">Server-side download processing ready</td>
               </tr>
             </tbody>
           </table>

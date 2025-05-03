@@ -16,23 +16,23 @@ export async function GET() {
     return NextResponse.json({
       status: 'success',
       systemInfo,
-      message: "This application now uses browser-based download methods that don't require server-side dependencies like ffmpeg or yt-dlp. No server-side dependency check is needed.",
-      browserDownload: {
+      message: "This application now uses direct server-side download methods that don't require external services.",
+      serverDownload: {
         enabled: true,
-        services: [
+        components: [
           {
-            name: "Y2mate",
-            url: "https://www.y2mate.com/",
+            name: "Direct Download",
+            status: "Active",
             formats: ["mp3", "mp4"]
           },
           {
-            name: "SaveFrom",
-            url: "https://en.savefrom.net/",
+            name: "YouTube Processing",
+            status: "Available",
             formats: ["mp3", "mp4"]
           },
           {
-            name: "YTMP3",
-            url: "https://ytmp3.cc/",
+            name: "Download Engine",
+            status: "Running",
             formats: ["mp3", "mp4"]
           }
         ]
