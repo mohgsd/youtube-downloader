@@ -29,22 +29,43 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      // Get video info to set appropriate filename
+      // Get video info to set appropriate filename and best format
       const info = await ytdl.getInfo(url);
       const videoTitle = info.videoDetails.title.replace(/[^\w\s]/gi, '');
       const sanitizedTitle = videoTitle.replace(/\s+/g, '_');
       
-      // Create filename based on format
-      const filename = `${sanitizedTitle}.${format}`;
-      
-      // Set up download options based on format
-      const options: ytdl.downloadOptions = {
-        quality: format === 'mp3' ? 'highestaudio' : 'highest',
-      };
+      // Find the best format based on user request
+      let formatInfo;
       
       if (format === 'mp3') {
-        options.filter = 'audioonly';
+        // For MP3, get the best audio-only format
+        formatInfo = ytdl.chooseFormat(info.formats, { 
+          quality: 'highestaudio',
+          filter: 'audioonly' 
+        });
+      } else {
+        // For MP4, get the best video format with audio
+        formatInfo = ytdl.chooseFormat(info.formats, {
+          quality: 'highest',
+          filter: 'audioandvideo'
+        });
       }
+      
+      if (!formatInfo || !formatInfo.url) {
+        throw new Error('Could not find suitable format for download');
+      }
+      
+      // Log what format we found (for debugging)
+      console.log(`Selected format: ${JSON.stringify({
+        itag: formatInfo.itag,
+        mimeType: formatInfo.mimeType,
+        quality: formatInfo.quality,
+        hasAudio: formatInfo.hasAudio,
+        hasVideo: formatInfo.hasVideo
+      })}`);
+      
+      // Create filename based on format
+      const filename = `${sanitizedTitle}.${format}`;
       
       // Create headers for the response
       const headers = new Headers();
@@ -55,31 +76,24 @@ export async function GET(request: NextRequest) {
       } else {
         headers.set('Content-Type', 'video/mp4');
       }
-
-      // Create a stream for the video/audio
-      const stream = ytdl(url, options);
       
-      // Convert Node.js stream to ReadableStream for the Response
-      const readableStream = new ReadableStream({
-        start(controller) {
-          stream.on('data', (chunk) => {
-            controller.enqueue(chunk);
-          });
-          
-          stream.on('end', () => {
-            controller.close();
-          });
-          
-          stream.on('error', (error) => {
-            console.error('Stream error:', error);
-            controller.error(error);
-          });
-        }
-      });
-
-      // Return the response with the stream
-      return new Response(readableStream, {
-        headers
+      // Instead of streaming through our server, redirect to the direct video URL
+      // This approach avoids processing through our server and is more compatible with Vercel
+      
+      // Option 1: Redirect to the direct URL
+      // return NextResponse.redirect(formatInfo.url);
+      
+      // Option 2: Proxy the response (better for preserving file name and headers)
+      const response = await fetch(formatInfo.url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch video: ${response.status} ${response.statusText}`);
+      }
+      
+      // Return the proxied response with our custom headers
+      return new Response(response.body, {
+        headers,
+        status: 200
       });
       
     } catch (streamError) {

@@ -15,9 +15,14 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
   const handleDirectDownload = (format: 'mp3' | 'mp4') => {
     try {
       setStatus('loading');
+      setError(null);
+      
       // Create the URL for our direct download API
       const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
       const downloadUrl = `/api/direct-download?url=${encodeURIComponent(youtubeUrl)}&format=${format}`;
+      
+      // For debugging - let's log the download URL
+      console.log(`Downloading from: ${downloadUrl}`);
       
       // Create an invisible iframe for the download
       const downloadFrame = document.createElement('iframe');
@@ -31,7 +36,15 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
           document.body.removeChild(downloadFrame);
         }
         setStatus('complete');
-      }, 3000); // Show loading for 3 seconds
+      }, 5000); // Show loading for 5 seconds for better user experience
+      
+      // Set up a fallback timer to detect if no download starts
+      setTimeout(() => {
+        if (status === 'loading') {
+          setStatus('error');
+          setError('Download did not start. Please try again or try a different video.');
+        }
+      }, 20000); // 20 second timeout
       
     } catch (err) {
       console.error('Error with direct download:', err);
