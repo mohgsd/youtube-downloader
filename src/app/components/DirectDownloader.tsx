@@ -10,7 +10,6 @@ interface DirectDownloaderProps {
 export default function DirectDownloader({ videoId, title }: DirectDownloaderProps) {
   const [status, setStatus] = useState<'idle' | 'error' | 'complete' | 'loading'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
 
   // Function for direct server download
   const handleDirectDownload = (format: 'mp3' | 'mp4') => {
@@ -21,7 +20,6 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
       const downloadUrl = `/api/direct-download?url=${encodeURIComponent(youtubeUrl)}&format=${format}`;
       
       // Create an invisible iframe for the download
-      // This allows the browser to handle the download without leaving the page
       const downloadFrame = document.createElement('iframe');
       downloadFrame.style.display = 'none';
       downloadFrame.src = downloadUrl;
@@ -44,11 +42,11 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
 
   return (
     <div className="mt-6 p-4 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4">YouTube Downloader</h2>
+      <h2 className="text-xl font-bold mb-4">Server Direct Download</h2>
       
       <div>
         <p className="mb-4">
-          Download "{title || "YouTube Video"}" directly from our server.
+          Download "<span className="font-semibold">{title || "YouTube Video"}</span>" directly from our server.
         </p>
         
         {status === 'loading' && (
@@ -100,8 +98,8 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
         <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
           <h3 className="font-semibold text-yellow-800">How It Works:</h3>
           <p className="text-yellow-700 mt-1">
-            This downloader uses our server to process and deliver YouTube videos directly to you. 
-            Downloads are processed securely on our server and then sent to your browser.
+            Our server downloads the YouTube video directly, processes it, and delivers it to your device.
+            No third-party services are used - everything happens securely on our servers.
           </p>
           <p className="text-yellow-700 mt-2 text-sm">
             <strong>Note:</strong> Only download content you have the right to access.
