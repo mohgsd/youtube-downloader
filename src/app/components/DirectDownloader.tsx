@@ -24,14 +24,15 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
       // For debugging - let's log the download URL
       console.log(`Downloading from: ${downloadUrl}`);
       
-      // Create a hidden form and submit it to trigger download
-      const form = document.createElement('form');
-      form.method = 'GET';
-      form.action = downloadUrl;
-      form.target = '_blank';
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
+      // Use window.location to directly navigate to the download URL
+      // This is the most reliable method for server-side streaming downloads
+      const downloadWindow = window.open(downloadUrl, '_blank');
+      
+      if (!downloadWindow) {
+        setStatus('error');
+        setError('Popup blocked. Please allow popups for this site to download.');
+        return;
+      }
       
       // Show complete status after a brief delay
       setTimeout(() => {
@@ -85,27 +86,35 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
         )}
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-          <button
-            onClick={() => handleDirectDownload('mp3')}
-            disabled={status === 'loading'}
+          <a
+            href={`/api/direct-download?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=mp3`}
+            target="_blank"
+            onClick={(e) => {
+              e.preventDefault();
+              handleDirectDownload('mp3');
+            }}
             className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
             </svg>
             Download MP3 (Audio)
-          </button>
+          </a>
           
-          <button
-            onClick={() => handleDirectDownload('mp4')}
-            disabled={status === 'loading'}
+          <a
+            href={`/api/direct-download?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=mp4`}
+            target="_blank"
+            onClick={(e) => {
+              e.preventDefault();
+              handleDirectDownload('mp4');
+            }}
             className="flex items-center justify-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm3 2h6v4H7V5zm8 8v2h-2v-2h2zm-2-2h2v-2h-2v2zm-4 4h2v-2H9v2zm-2 0v-2H5v2h2zm-2-4h2v-2H5v2z" clipRule="evenodd" />
             </svg>
             Download MP4 (Video)
-          </button>
+          </a>
         </div>
         
         <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
