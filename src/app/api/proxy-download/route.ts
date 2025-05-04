@@ -1,12 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
-
-// Promisify exec
-const execAsync = promisify(exec);
 
 // This config is necessary for streaming responses in Next.js
 export const dynamic = 'force-dynamic';
@@ -14,9 +6,6 @@ export const dynamicParams = true;
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
-
-// Max timeout for operations (30 seconds)
-const OPERATION_TIMEOUT = 30000;
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,11 +28,36 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      // Redirect to fallback service as a simpler solution
-      // This is a public and reliable YouTube to MP3/MP4 API service
-      const serviceUrl = `https://api.vevioz.com/api/button/${format}/${encodeURIComponent(url)}`;
+      // Extract video ID from URL
+      let videoId = '';
+      if (url.includes('youtube.com/watch?v=')) {
+        videoId = url.split('watch?v=')[1].split('&')[0];
+      } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1].split('?')[0];
+      }
       
+      if (!videoId) {
+        return NextResponse.json({ 
+          error: 'Could not extract video ID from URL' 
+        }, { status: 400 });
+      }
+      
+      // Choose appropriate service URL based on format
+      let serviceUrl = '';
+      
+      if (format === 'mp3') {
+        // Y2mate is a reliable service for MP3 downloads
+        serviceUrl = `https://www.y2mate.com/youtube-mp3/${videoId}`;
+      } else {
+        // For MP4 downloads
+        serviceUrl = `https://www.y2mate.com/youtube/${videoId}`;
+      }
+      
+      console.log(`Redirecting to download service: ${serviceUrl}`);
+      
+      // Redirect to the service
       return NextResponse.redirect(serviceUrl);
+      
     } catch (streamError) {
       console.error('Proxy download error:', streamError);
       return NextResponse.json({
