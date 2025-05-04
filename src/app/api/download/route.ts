@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getYtDlpInstance } from '@/lib/ytDlpBinary';
 import path from 'path';
 import { promises as fs } from 'fs';
+import * as fsSync from 'fs';
 import os from 'os';
 import { Readable } from 'stream';
 import axios from 'axios';
@@ -9,7 +9,6 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { createWriteStream } from 'fs';
 import ytdl from 'ytdl-core'; // Direct import of ytdl-core
-import { checkDependencies } from '@/lib/dependencyCheck';
 import { randomUUID } from 'crypto';
 
 const execPromise = promisify(exec);
@@ -31,38 +30,11 @@ export const runtime = 'nodejs';
 
 // Create download directory if it doesn't exist
 try {
-  if (!fs.existsSync(DOWNLOAD_DIR)) {
-    fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+  if (!fsSync.existsSync(DOWNLOAD_DIR)) {
+    fsSync.mkdirSync(DOWNLOAD_DIR, { recursive: true });
   }
-  
-  // Set up periodic cleanup of old files
-  setInterval(() => {
-    cleanupOldFiles();
-  }, CACHE_CLEANUP_INTERVAL);
-  
 } catch (error) {
   console.error('Error setting up download directory:', error);
-}
-
-// Function to clean up old files
-async function cleanupOldFiles() {
-  try {
-    const now = Date.now();
-    const files = fs.readdirSync(DOWNLOAD_DIR);
-    
-    for (const file of files) {
-      const filePath = path.join(DOWNLOAD_DIR, file);
-      const stats = fs.statSync(filePath);
-      
-      // Delete files older than MAX_CACHE_TIME
-      if (now - stats.mtimeMs > MAX_CACHE_TIME) {
-        fs.unlinkSync(filePath);
-        console.log(`Deleted old file: ${file}`);
-      }
-    }
-  } catch (error) {
-    console.error('Error cleaning up old files:', error);
-  }
 }
 
 // Extract video ID from URL
@@ -78,239 +50,60 @@ function extractVideoId(url: string): string | null {
   return match && match[1] ? match[1] : null;
 }
 
-// Attempt to download directly using ffmpeg if available
-async function tryFfmpegDownload(url: string, outputPath: string, format: string): Promise<boolean> {
-  try {
-    const videoId = extractVideoId(url);
-    if (!videoId) {
-      console.error('ffmpeg download failed: Could not extract video ID');
-      return false;
-    }
-    
-    // Try to check if ffmpeg is available
+// Attempt to download directly using ytdl-core
+async function downloadWithYtdlCore(url: string, format: string, outputPath: string): Promise<boolean> {
+  return new Promise(async (resolve, reject) => {
     try {
-      const { stdout } = await execPromise('ffmpeg -version');
-      console.log('ffmpeg is available:', stdout.substring(0, 50) + '...');
-    } catch (ffmpegCheckError) {
-      console.error('ffmpeg not available:', ffmpegCheckError);
-      return false;
-    }
-    
-    // Build the ffmpeg command based on format
-    let command;
-    if (format === 'mp3') {
-      // For MP3, explicitly extract audio only and convert to MP3
-      command = `ffmpeg -i "https://www.youtube.com/watch?v=${videoId}" -vn -q:a 0 -f mp3 "${outputPath}" -y`;
-    } else {
-      // For MP4, ensure we're getting both video and audio in a single MP4 container
-      command = `ffmpeg -i "https://www.youtube.com/watch?v=${videoId}" -c:v libx264 -c:a aac -f mp4 "${outputPath}" -y`;
-    }
-    
-    console.log('Attempting ffmpeg download:', command);
-    try {
-      const { stdout, stderr } = await execPromise(command);
-      console.log('ffmpeg download output:', stdout);
-      console.log('ffmpeg download errors/warnings:', stderr);
-    } catch (ffmpegExecError) {
-      console.error('ffmpeg execution failed:', ffmpegExecError);
-      return false;
-    }
-    
-    // Verify the file exists and has content
-    try {
-      const stats = await fs.stat(outputPath);
-      console.log(`ffmpeg download successful, file size: ${stats.size} bytes`);
-      return stats.size > 0;
-    } catch (statError) {
-      console.error('ffmpeg download failed - file not found or empty:', statError);
-      return false;
-    }
-  } catch (error) {
-    console.error('ffmpeg download failed with unexpected error:', error);
-    return false;
-  }
-}
-
-// Attempt to download directly from a YouTube stream
-async function tryDirectDownload(videoId: string, format: string, outputPath: string): Promise<boolean> {
-  try {
-    console.log(`Attempting direct download for video ID: ${videoId}, format: ${format}`);
-    
-    // No need to check if ytdl-core is installed - it's in package.json
-    try {
-      // Using dynamic import for ytdl-core to avoid server-side import issues
-      const ytdl = await import('ytdl-core').then(m => m.default);
-      console.log('Successfully imported ytdl-core');
+      console.log(`Attempting ytdl-core download for URL: ${url}, format: ${format}`);
       
-      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      // Get basic info about the video
+      const info = await ytdl.getInfo(url);
+      console.log(`Video info retrieved for "${info.videoDetails.title}"`);
       
-      try {
-        // Verify the video is available
-        console.log('Getting video info...');
-        const videoInfo = await ytdl.getInfo(videoUrl);
-        console.log(`Video info retrieved: ${videoInfo.videoDetails.title}`);
-        
-        // Create a writable stream to the output file
-        const outputStream = createWriteStream(outputPath);
-        
-        // Set up options
-        const options: any = {
-          quality: format === 'mp3' ? 'highestaudio' : 'highest',
-        };
-        
-        if (format === 'mp3') {
-          options.filter = 'audioonly';
-        }
-        
-        // Get the download stream
-        console.log('Creating download stream...');
-        const downloadStream = ytdl(videoUrl, options);
-        
-        // Handle completion and errors via promise
-        return new Promise((resolve, reject) => {
-          outputStream.on('finish', async () => {
-            try {
-              const stats = await fs.stat(outputPath);
-              console.log(`Direct download complete, size: ${stats.size} bytes`);
-              resolve(stats.size > 0);
-            } catch (err: unknown) {
-              console.error('Error checking output file:', err);
-              resolve(false);
-            }
-          });
-          
-          outputStream.on('error', (err) => {
-            console.error('Output stream error:', err);
-            reject(err);
-          });
-          
-          downloadStream.on('error', (err) => {
-            console.error('Download stream error:', err);
-            reject(err);
-          });
-          
-          // Pipe the download stream to the output file
-          console.log('Starting download...');
-          downloadStream.pipe(outputStream);
-        });
-      } catch (videoError) {
-        console.error('Error getting video info:', videoError);
-        return false;
+      // Set up stream options based on format
+      const options: ytdl.downloadOptions = {
+        quality: format === 'mp3' ? 'highestaudio' : 'highest',
+      };
+      
+      if (format === 'mp3') {
+        options.filter = 'audioonly';
       }
-    } catch (importError) {
-      console.error('Error importing ytdl-core:', importError);
-      return false;
-    }
-  } catch (error) {
-    console.error(`Direct download failed:`, error);
-    return false;
-  }
-}
-
-// Add a new fallback method using exclusively node libraries
-async function tryFallbackNodeDownload(videoId: string, format: string, outputPath: string): Promise<boolean> {
-  try {
-    console.log(`Attempting last resort Node-only download for video ID: ${videoId}, format: ${format}`);
-    
-    // Use node-fetch for direct requests (already a dependency in package.json)
-    const nodeFetch = await import('node-fetch').then(m => m.default);
-    
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    
-    // First, get the video page HTML
-    const response = await nodeFetch(videoUrl);
-    if (!response.ok) {
-      console.error(`Failed to fetch video page: ${response.status} ${response.statusText}`);
-      return false;
-    }
-    
-    const html = await response.text();
-    console.log(`Fetched video page HTML (${html.length} bytes)`);
-    
-    // Extract video info
-    const titleMatch = html.match(/<meta name="title" content="([^"]+)"/);
-    const title = titleMatch ? titleMatch[1] : 'unknown';
-    console.log(`Video title: ${title}`);
-    
-    // Look for direct media URLs in the page
-    const urlMatch = html.match(/(?:"url":")(https:\/\/[^"]+\.(?:mp4|webm)[^"]*)/g);
-    
-    if (!urlMatch || urlMatch.length === 0) {
-      console.error('No direct media URLs found in the page');
-      return false;
-    }
-    
-    // Clean up the URLs and choose the most appropriate one
-    const mediaUrls = urlMatch.map(u => u.replace('"url":"', '').replace(/\\u0026/g, '&'));
-    console.log(`Found ${mediaUrls.length} potential media URLs`);
-    
-    let targetUrl: string | null = null;
-    
-    if (format === 'mp3') {
-      // For MP3, prefer audio-only streams
-      targetUrl = mediaUrls.find(url => url.includes('audio')) || mediaUrls[0];
-    } else {
-      // For MP4, prefer higher quality video
-      targetUrl = mediaUrls.find(url => url.includes('hd720')) || 
-                 mediaUrls.find(url => url.includes('hd1080')) || 
-                 mediaUrls[0];
-    }
-    
-    if (!targetUrl) {
-      console.error('Could not select an appropriate media URL');
-      return false;
-    }
-    
-    console.log(`Selected media URL: ${targetUrl.substring(0, 100)}...`);
-    
-    // Download the media file
-    const mediaResponse = await nodeFetch(targetUrl);
-    if (!mediaResponse.ok || !mediaResponse.body) {
-      console.error(`Failed to fetch media: ${mediaResponse.status} ${mediaResponse.statusText}`);
-      return false;
-    }
-    
-    // At this point, we know body is not null
-    const responseBody = mediaResponse.body;
-    
-    // Write to output file
-    const writer = createWriteStream(outputPath);
-    
-    return new Promise((resolve, reject) => {
-      responseBody.pipe(writer);
       
-      writer.on('finish', async () => {
-        try {
-          const stats = await fs.stat(outputPath);
-          console.log(`Fallback Node download complete, size: ${stats.size} bytes`);
-          
-          // For MP3, we'd ideally convert from webm/mp4 to mp3 here
-          // but we're returning the raw audio for simplicity
-          
-          resolve(stats.size > 0);
-        } catch (statError) {
-          console.error('Error checking output file:', statError);
-          resolve(false);
-        }
-      });
+      // Start the download
+      const downloadStream = ytdl(url, options);
+      const fileStream = createWriteStream(outputPath);
       
-      writer.on('error', (err) => {
-        console.error('Write stream error:', err);
+      downloadStream.on('error', (err) => {
+        console.error('Download stream error:', err);
         reject(err);
       });
-    });
-  } catch (error) {
-    console.error('Fallback Node download failed:', error);
-    return false;
-  }
+      
+      fileStream.on('error', (err) => {
+        console.error('File stream error:', err);
+        reject(err);
+      });
+      
+      fileStream.on('finish', () => {
+        console.log(`Download completed: ${outputPath}`);
+        resolve(true);
+      });
+      
+      // Pipe the download to the file
+      downloadStream.pipe(fileStream);
+      
+    } catch (error) {
+      console.error('ytdl-core download failed:', error);
+      resolve(false);
+    }
+  });
 }
 
-// Add a new emergency fallback using a third-party service
-async function tryEmergencyServiceFallback(videoId: string, format: string, outputPath: string): Promise<boolean> {
+// Fallback to using a third-party service API
+async function downloadWithPublicApi(videoId: string, format: string, outputPath: string): Promise<boolean> {
   try {
-    console.log(`Attempting emergency service fallback for video ID: ${videoId}, format: ${format}`);
+    console.log(`Attempting public API fallback for video ID: ${videoId}, format: ${format}`);
     
-    // Use a publicly available API service that still works with current YouTube changes
+    // Use a publicly available API service
     const apiUrl = `https://pipedapi.kavin.rocks/streams/${videoId}`;
     console.log(`Requesting stream info from: ${apiUrl}`);
     
@@ -395,13 +188,13 @@ async function tryEmergencyServiceFallback(videoId: string, format: string, outp
     // Save to file
     const writer = createWriteStream(outputPath);
     
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       streamResponse.data.pipe(writer);
       
       writer.on('finish', async () => {
         try {
           const stats = await fs.stat(outputPath);
-          console.log(`Emergency service download complete, size: ${stats.size} bytes`);
+          console.log(`Public API download complete, size: ${stats.size} bytes`);
           resolve(stats.size > 0);
         } catch (statError) {
           console.error('Error checking output file:', statError);
@@ -411,11 +204,11 @@ async function tryEmergencyServiceFallback(videoId: string, format: string, outp
       
       writer.on('error', (err) => {
         console.error('Write stream error:', err);
-        reject(err);
+        resolve(false);
       });
     });
   } catch (error) {
-    console.error('Emergency service fallback failed:', error);
+    console.error('Public API fallback failed:', error);
     return false;
   }
 }
@@ -428,6 +221,7 @@ function sanitizeFilename(filename: string): string {
     .substring(0, 100); // Limit length for safety
 }
 
+// Main handler function
 export async function GET(request: NextRequest) {
   try {
     // Get parameters from request
@@ -448,72 +242,56 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
     
+    // Validate YouTube URL
+    if (!youtubeUrlRegex.test(url)) {
+      return NextResponse.json({ 
+        error: 'Invalid YouTube URL' 
+      }, { status: 400 });
+    }
+    
     // Extract the video ID for validation and caching
     const videoId = extractVideoId(url);
     if (!videoId) {
       return NextResponse.json({ 
-        error: 'Invalid YouTube URL format' 
+        error: 'Could not extract video ID from URL' 
       }, { status: 400 });
     }
-    
-    // Generate a unique filename based on video ID and format
-    const uniqueId = randomUUID().substring(0, 8);
-    let outputFilename = `${videoId}_${uniqueId}.${format}`;
-    let outputPath = path.join(DOWNLOAD_DIR, outputFilename);
-    
-    // Setup yt-dlp options based on format
-    let ytDlpOptions = '';
-    
-    if (format === 'mp3') {
-      // For MP3 format
-      ytDlpOptions = [
-        '-f bestaudio',
-        '--extract-audio',
-        '--audio-format mp3',
-        '--audio-quality 0',
-        '--no-playlist',
-        '--no-warnings',
-        '--quiet'
-      ].join(' ');
-    } else {
-      // For MP4 format
-      ytDlpOptions = [
-        '-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"',
-        '--merge-output-format mp4',
-        '--no-playlist',
-        '--no-warnings',
-        '--quiet'
-      ].join(' ');
-    }
-    
-    console.log(`Starting download for video ID: ${videoId} in ${format} format`);
-    
-    // Execute yt-dlp to download the file
+
     try {
-      // Get video info first to get the title
-      const { stdout: infoOutput } = await execPromise(`yt-dlp --print title --no-warnings --quiet "${url}"`);
-      const videoTitle = sanitizeFilename(infoOutput.trim()) || videoId;
+      // Get video info to determine the title
+      const info = await ytdl.getInfo(url);
+      const videoTitle = sanitizeFilename(info.videoDetails.title) || videoId;
       
-      // Update the output filename with the video title
-      outputFilename = `${videoTitle}.${format}`;
-      outputPath = path.join(DOWNLOAD_DIR, outputFilename);
+      // Generate a unique filename
+      const uniqueId = randomUUID().substring(0, 8);
+      const outputFilename = `${videoTitle}_${uniqueId}.${format}`;
+      const outputPath = path.join(DOWNLOAD_DIR, outputFilename);
       
-      // Check if file already exists (simple caching)
-      if (!fs.existsSync(outputPath)) {
-        console.log(`Downloading ${videoTitle} in ${format} format...`);
-        
-        // Execute the download command
-        const downloadCommand = `yt-dlp ${ytDlpOptions} -o "${outputPath}" "${url}"`;
-        await execPromise(downloadCommand);
-        
-        console.log(`Download completed: ${outputPath}`);
-      } else {
-        console.log(`Using cached file: ${outputPath}`);
+      console.log(`Preparing to download "${videoTitle}" (${videoId}) in ${format} format`);
+      
+      // Try primary download method
+      let downloadSuccess = await downloadWithYtdlCore(url, format, outputPath);
+      
+      // If primary method fails, try fallback
+      if (!downloadSuccess) {
+        console.log('Primary download method failed, trying fallback...');
+        downloadSuccess = await downloadWithPublicApi(videoId, format, outputPath);
       }
       
-      // Check if the file exists after download attempt
-      if (!fs.existsSync(outputPath)) {
-        throw new Error('Download failed - output file not found');
+      if (!downloadSuccess) {
+        return NextResponse.json({
+          error: 'Failed to download video after trying multiple methods',
+        }, { status: 500 });
+      }
+      
+      // Check if the file exists
+      try {
+        await fs.access(outputPath);
+      } catch (accessError) {
+        return NextResponse.json({
+          error: 'Failed to access downloaded file',
+          details: accessError instanceof Error ? accessError.message : String(accessError)
+        }, { status: 500 });
       }
       
       // Create response headers
@@ -527,7 +305,18 @@ export async function GET(request: NextRequest) {
       }
       
       // Stream the file directly to the client
-      const fileBuffer = fs.readFileSync(outputPath);
+      const fileBuffer = await fs.readFile(outputPath);
+      
+      // Schedule file deletion after a short time
+      setTimeout(async () => {
+        try {
+          await fs.unlink(outputPath);
+          console.log(`Deleted temporary file: ${outputPath}`);
+        } catch (unlinkError) {
+          console.error('Error deleting temporary file:', unlinkError);
+        }
+      }, 60000); // Delete after 1 minute
+      
       return new Response(fileBuffer, {
         headers,
         status: 200,
