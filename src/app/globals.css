@@ -2,30 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-background text-text;
+@layer base {
+  body {
+    @apply bg-background text-text;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
 }
 
-.container {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+@layer components {
+  .container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn {
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-md;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white;
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-100 text-purple-700 border border-purple-200;
+  }
+
+  .input {
+    @apply w-full p-3 bg-white rounded-lg border border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-md border border-purple-100 overflow-hidden;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-glow transition-all duration-300 hover:-translate-y-1;
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-sm bg-white bg-opacity-70 border border-white border-opacity-20;
+  }
+  
+  .gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-indigo-600;
+  }
 }
 
-.btn {
-  @apply px-4 py-2 rounded font-medium transition-colors duration-200;
+/* Custom animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
-.btn-primary {
-  @apply bg-primary hover:bg-opacity-80 text-white;
-}
-
-.btn-secondary {
-  @apply bg-secondary hover:bg-opacity-80 text-white;
-}
-
-.input {
-  @apply w-full p-3 bg-secondary rounded-md border border-gray-700 focus:border-accent focus:outline-none;
-}
-
-.select {
-  @apply w-full p-3 bg-secondary rounded-md border border-gray-700 focus:border-accent focus:outline-none;
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 } 
