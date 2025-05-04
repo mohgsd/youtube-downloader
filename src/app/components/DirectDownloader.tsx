@@ -10,12 +10,14 @@ interface DirectDownloaderProps {
 export default function DirectDownloader({ videoId, title }: DirectDownloaderProps) {
   const [status, setStatus] = useState<'idle' | 'error' | 'complete' | 'loading'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [showFallback, setShowFallback] = useState(false);
 
   // Function for direct server download
   const handleDirectDownload = (format: 'mp3' | 'mp4') => {
     try {
       setStatus('loading');
       setError(null);
+      setShowFallback(false);
       
       // Create the URL for our direct download API
       const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
@@ -39,28 +41,48 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
         setStatus('complete');
       }, 2000);
       
-      // Set up a fallback timer for error message
+      // Set up a fallback timer for error message and show fallback option
       setTimeout(() => {
         if (status === 'loading') {
           setStatus('error');
-          setError('Download may not have started. Your browser may not support automatic downloads or the video may be unavailable.');
+          setError('Download may not have started. Try the alternative download method below.');
+          setShowFallback(true);
         }
-      }, 20000); // 20 second timeout
+      }, 10000); // 10 second timeout - reduced from 20s for better UX
       
     } catch (err) {
       console.error('Error with direct download:', err);
       setStatus('error');
       setError(err instanceof Error ? err.message : 'Failed to initiate download');
+      setShowFallback(true);
+    }
+  };
+
+  // Function for fallback download through external service
+  const handleFallbackDownload = (format: 'mp3' | 'mp4') => {
+    try {
+      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const proxyUrl = `/api/proxy-download?url=${encodeURIComponent(youtubeUrl)}&format=${format}`;
+      
+      console.log(`Using fallback download: ${proxyUrl}`);
+      
+      // Open in a new tab
+      window.open(proxyUrl, '_blank');
+      
+    } catch (err) {
+      console.error('Error with fallback download:', err);
+      setStatus('error');
+      setError(err instanceof Error ? err.message : 'Failed to initiate fallback download');
     }
   };
 
   return (
     <div className="mt-6 p-4 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4">Server Direct Download</h2>
+      <h2 className="text-xl font-bold mb-4">YouTube Download</h2>
       
       <div>
         <p className="mb-4">
-          Download "<span className="font-semibold">{title || "YouTube Video"}</span>" directly from our server.
+          Download "<span className="font-semibold">{title || "YouTube Video"}</span>" in your preferred format.
         </p>
         
         {status === 'loading' && (
@@ -117,10 +139,41 @@ export default function DirectDownloader({ videoId, title }: DirectDownloaderPro
           </a>
         </div>
         
+        {/* Alternative download options when the main method fails */}
+        {showFallback && (
+          <div className="mt-8 border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4">Alternative Download Method</h3>
+            <p className="mb-4">If the download didn't work, try our alternative method:</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={() => handleFallbackDownload('mp3')}
+                className="flex items-center justify-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
+                </svg>
+                Alternative MP3 Download
+              </button>
+              
+              <button
+                onClick={() => handleFallbackDownload('mp4')}
+                className="flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                </svg>
+                Alternative MP4 Download
+              </button>
+            </div>
+          </div>
+        )}
+        
         <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
           <h3 className="font-semibold text-yellow-800">How It Works:</h3>
           <p className="text-yellow-700 mt-1">
-            Our server streams YouTube video content directly to your browser. The video is processed on our server and delivered to you as a downloadable file.
+            Our service processes YouTube videos and delivers them to you as downloadable files.
+            If the primary method doesn't work, our alternative method connects to a reliable external service.
           </p>
           <p className="text-yellow-700 mt-2 text-sm">
             <strong>Note:</strong> Only download content you have the right to access.
