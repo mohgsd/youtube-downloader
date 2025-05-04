@@ -1,96 +1,103 @@
-# YouTube Downloader
+# YouTube Direct Downloader
 
-A web application that enables administrators to input a YouTube URL and provide users with download options for both MP3 and MP4 formats. This application uses yt-dlp, a powerful and actively maintained YouTube extraction library that handles encrypted streams correctly.
+A Next.js application for downloading YouTube videos directly to your device without relying on third-party services.
+
+![YouTube Downloader Screenshot](https://via.placeholder.com/800x400?text=YouTube+Downloader)
 
 ## Features
 
-- Single URL input for YouTube videos
-- Reliable processing of YouTube links with yt-dlp
-- Handles encrypted or protected streams
-- Dual download options (MP3 audio and MP4 video)
-- Clean, responsive UI with minimal design
-- Proper error handling for invalid URLs or API failures
+- Direct download of YouTube videos in MP4 format
+- Audio-only downloads in MP3 format
+- Clean, responsive UI with modern design
+- Server-side processing using yt-dlp for maximum reliability
+- No reliance on external services or APIs
+- Temporary file caching for improved performance
+- Progress indicators for better user experience
 
-## Tech Stack
+## Technology Stack
 
-- Next.js 14+ with TypeScript
-- Tailwind CSS for styling
-- yt-dlp-wrap for YouTube download functionality (uses yt-dlp under the hood)
-- API Routes for backend processing
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Node.js with Next.js API routes
+- **Video Processing**: yt-dlp, ffmpeg
+- **Styling**: Tailwind CSS with custom components
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ installed
-- npm or yarn package manager
-- yt-dlp binary installed on your system (can be installed via pip: `pip install yt-dlp`)
+This application requires:
+
+- Node.js (v14 or newer)
+- yt-dlp installed on your system
+- ffmpeg installed on your system
+
+For detailed installation instructions for yt-dlp and ffmpeg, see the [setup guide](setup-yt-dlp.md).
 
 ### Installation
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/yourusername/youtube-downloader.git
 cd youtube-downloader
 ```
 
 2. Install dependencies:
 ```bash
 npm install
-# or
-yarn install
 ```
 
-3. Ensure yt-dlp is installed on your system:
-```bash
-# Using pip (Python package manager)
-pip install yt-dlp
+3. Make sure yt-dlp and ffmpeg are installed and accessible from PATH.
 
-# Verify installation
-yt-dlp --version
-```
-
-### Running the Application
-
-Development mode:
+4. Start the development server:
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
-Build for production:
+5. Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+### Building for Production
+
 ```bash
 npm run build
-# or
-yarn start
+npm start
 ```
 
-## Usage
+## How It Works
 
-1. Visit the application in your browser (default: http://localhost:3000)
-2. Enter a YouTube video URL in the input field
-3. Click "Process Video" to generate download options
-4. Once processed, click either the MP3 or MP4 download button
-5. The file will begin downloading automatically
+1. When a user enters a YouTube URL, the application extracts the video ID.
+2. When the download button is clicked, an API request is sent to the server.
+3. The server uses yt-dlp to download the video in the requested format.
+4. The file is temporarily stored on the server and streamed back to the user.
+5. Temporary files are automatically cleaned up after a configurable time period.
 
-## API Dependencies
+## API Endpoints
 
-- **yt-dlp**: A powerful command-line program used for downloading videos from YouTube and other video sites
-- **yt-dlp-wrap**: Node.js wrapper for yt-dlp command-line tool
-- **Next.js API Routes**: Used for handling server-side API requests and streaming content
+### `/api/download`
 
-## Important Notes
+**Method**: GET  
+**Parameters**:
+- `url`: YouTube video URL (required)
+- `format`: Either 'mp3' or 'mp4' (required)
 
-- This application is for demonstration purposes
-- yt-dlp is regularly updated to handle YouTube's changes to their platform
-- For a production environment, you would need to:
-  - Implement proper authentication for administrators
-  - Set up a more robust streaming system with caching
-  - Add rate limiting and security measures
-  - Consider legal implications of YouTube content download
-  - Ensure regular updates of the yt-dlp binary
+**Response**: Streams the downloaded file to the client.
+
+## Limitations
+
+- Large files may take longer to process
+- Server needs sufficient disk space for temporary files
+- Downloads may fail if YouTube changes their site structure
+- Not suitable for bulk downloading
+
+## Legal Considerations
+
+This tool is provided for educational purposes and for downloading content you have the right to access. Please respect copyright laws and YouTube's Terms of Service.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - The backbone of the video downloading functionality
+- [Next.js](https://nextjs.org/) - The React framework used
+- [Tailwind CSS](https://tailwindcss.com/) - For the UI design 
